@@ -1,10 +1,23 @@
-import { diff_match_patch, DIFF_DELETE, DIFF_INSERT, DIFF_EQUAL, Diff } from 'diff-match-patch';
-import { ElementType } from '@emmetio/html-matcher';
-import { ParsedModel, Token, ElementTypeAddon } from './types';
-import createOptions, { Options } from './options';
-import wordBounds from './word-bounds';
-import { fragment, FragmentOptions, slice } from './slice';
-import { closest, getElementStack, isTagToken, isType, isWhitespace, last } from './utils';
+import {
+    diff_match_patch,
+    DIFF_DELETE,
+    DIFF_INSERT,
+    DIFF_EQUAL,
+    Diff,
+} from "diff-match-patch";
+import { ElementType } from "@emmetio/html-matcher";
+import { ParsedModel, Token, ElementTypeAddon } from "./types";
+import createOptions, { Options, PostDiffCleanup } from "./options";
+import wordBounds from "./word-bounds";
+import { fragment, FragmentOptions, slice } from "./slice";
+import {
+    closest,
+    getElementStack,
+    isTagToken,
+    isType,
+    isWhitespace,
+    last,
+} from "./utils";
 
 interface DiffState {
     /** Pointer to current `input` token  */
@@ -36,23 +49,27 @@ interface DiffState {
  * Calculates diff between given parsed document and produces new model with diff
  * tokens in it. This model can be restored into a final XML document
  */
-export default function diff(from: ParsedModel, to: ParsedModel, options: Options = createOptions()): ParsedModel {
+export default function diff(
+    from: ParsedModel,
+    to: ParsedModel,
+    options: Options = createOptions()
+): ParsedModel {
     const diffs = getDiff(from, to, options);
     const state = createState(to.tokens);
     const fragmentOpt: FragmentOptions = {
-        tags: options.preserveTags
+        tags: options.preserveTags,
     };
     let toOffset = 0;
     let fromOffset = 0;
-    const del = options.invert ? 'ins' : 'del';
-    const ins = options.invert ? 'del' : 'ins';
+    const del = options.invert ? "ins" : "del";
+    const ins = options.invert ? "del" : "ins";
     const diffStats = {
         ins: 0,
         del: 0,
-        eq: 0
+        eq: 0,
     };
 
-    diffs.forEach(d => {
+    diffs.forEach((d) => {
         let value = d[1];
         if (d[0] === DIFF_DELETE && value) {
             // Removed fragment: just add deleted content to result
@@ -77,10 +94,18 @@ export default function diff(from: ParsedModel, to: ParsedModel, options: Option
                 moveTokensUntilPos(state, toOffset, fromStack.stack);
 
                 if (options.preserveXml) {
-                    fragmentOpt.receiverStack = getElementStack(to.tokens, toOffset).stack;
+                    fragmentOpt.receiverStack = getElementStack(
+                        to.tokens,
+                        toOffset
+                    ).stack;
                 }
 
-                const chunk = fragment(from, fromOffset, fromOffset + value.length, fragmentOpt);
+                const chunk = fragment(
+                    from,
+                    fromOffset,
+                    fromOffset + value.length,
+                    fragmentOpt
+                );
                 state.push(chunk.toDiffToken(del, value, pos));
 
                 diffStats.del += value.length;
@@ -95,8 +120,15 @@ export default function diff(from: ParsedModel, to: ParsedModel, options: Option
             }
 
             if (!shouldSkipIns(value, toOffset, state, options)) {
-                const tagName = options.skipSpace && isWhitespace(value) ? '' : ins;
-                moveSlice(to, toOffset, toOffset + value.length, tagName, state);
+                const tagName =
+                    options.skipSpace && isWhitespace(value) ? "" : ins;
+                moveSlice(
+                    to,
+                    toOffset,
+                    toOffset + value.length,
+                    tagName,
+                    state
+                );
                 diffStats.ins += value.length;
             }
 
@@ -117,7 +149,10 @@ export default function diff(from: ParsedModel, to: ParsedModel, options: Option
                     break;
                 }
 
-                if (first.location === toOffset && first.type === ElementType.Open) {
+                if (
+                    first.location === toOffset &&
+                    first.type === ElementType.Open
+                ) {
                     // Handle edge case. In the following examples:
                     // – aa <div>bb cc</div>
                     // – aa bb <div>cc</div>
@@ -150,7 +185,7 @@ export default function diff(from: ParsedModel, to: ParsedModel, options: Option
     return {
         tokens: state.output.concat(state.input.slice(state.ptr)),
         content: to.content,
-        stats: diffStats
+        stats: diffStats,
     };
 }
 
@@ -158,7 +193,13 @@ export default function diff(from: ParsedModel, to: ParsedModel, options: Option
  * Moves sliced fragment from `model` document to `output`, starting at `tokenPos`
  * token location
  */
-function moveSlice(model: ParsedModel, from: number, to: number, tagName: string, state: DiffState) {
+function moveSlice(
+    model: ParsedModel,
+    from: number,
+    to: number,
+    tagName: string,
+    state: DiffState
+) {
     const chunk = slice(model, from, to, state.ptr);
 
     // Move tokens preceding sliced fragment to output
@@ -211,13 +252,23 @@ function moveTokensUntilPos(state: DiffState, textPos: number, stack: Token[]) {
 /**
  * Check if given INSERT patch should be omitted to reduce noise
  */
-function shouldSkipIns(value: string, pos: number, state: DiffState, options: Options): boolean {
+function shouldSkipIns(
+    value: string,
+    pos: number,
+    state: DiffState,
+    options: Options
+): boolean {
     if (options.compact && isWhitespace(value)) {
         // Inserted whitespace.
         // It can be either significant (`ab` -> `a b`) or insignificant,
         // if this whitespace is empty or is right after non-inline element
         const prev = last(state.output);
-        if (prev && isTagToken(prev) && prev.location === pos && !isInlineElement(prev, options)) {
+        if (
+            prev &&
+            isTagToken(prev) &&
+            prev.location === pos &&
+            !isInlineElement(prev, options)
+        ) {
             return true;
         }
     }
@@ -228,14 +279,22 @@ function shouldSkipIns(value: string, pos: number, state: DiffState, options: Op
 /**
  * Check if given DELETE patch should be omitted
  */
-function shouldSkipDel(content: string, value: string, pos: number, options: Options): boolean {
+function shouldSkipDel(
+    content: string,
+    value: string,
+    pos: number,
+    options: Options
+): boolean {
     const isSpaceDel = isWhitespace(value);
     if (options.skipSpace && isSpaceDel) {
         return true;
     }
 
     if (options.compact && isSpaceDel) {
-        if (isWhitespace(content.charAt(pos - 1)) || isWhitespace(content.charAt(pos))) {
+        if (
+            isWhitespace(content.charAt(pos - 1)) ||
+            isWhitespace(content.charAt(pos))
+        ) {
             // There’s whitespace before or after deleted whitespace token
             return true;
         }
@@ -254,8 +313,10 @@ function shouldSkipDel(content: string, value: string, pos: number, options: Opt
  */
 function isInlineElement(token: Token, options: Options): boolean {
     if (token) {
-        return token.type === ElementTypeAddon.Diff
-            || options.inlineElements.includes(token.name);
+        return (
+            token.type === ElementTypeAddon.Diff ||
+            options.inlineElements.includes(token.name)
+        );
     }
 
     return false;
@@ -268,13 +329,17 @@ function isInlineElement(token: Token, options: Options): boolean {
  * space between `a` and `b` is a suppressed whitespace and must be removed from
  * patch
  */
-function suppressWhitespace(value: string, pos: number, state: DiffState): boolean {
+function suppressWhitespace(
+    value: string,
+    pos: number,
+    state: DiffState
+): boolean {
     const lastToken = last(state.output);
     return lastToken
-        ? isType(lastToken, ElementTypeAddon.Space)
-        && !!lastToken.offset
-        && lastToken.location === pos
-        && value[0] === ' '
+        ? isType(lastToken, ElementTypeAddon.Space) &&
+              !!lastToken.offset &&
+              lastToken.location === pos &&
+              value[0] === " "
         : false;
 }
 
@@ -288,10 +353,20 @@ function getDiff(from: ParsedModel, to: ParsedModel, options: Options): Diff[] {
             Object.assign(dmp, options.dmp);
         }
         diffs = dmp.diff_main(from.content, to.content);
-        dmp.diff_cleanupSemantic(diffs);
+        let postDiffCleanup = PostDiffCleanup.SEMANTIC_CLEANUP;
+        if (
+            options.postDiffCleanup &&
+            typeof dmp[options.postDiffCleanup] === "function"
+        ) {
+            postDiffCleanup = options.postDiffCleanup;
+        }
+        dmp[postDiffCleanup](diffs);
     }
 
-    if (options.replaceThreshold && getChangeThreshold(diffs) > options.replaceThreshold) {
+    if (
+        options.replaceThreshold &&
+        getChangeThreshold(diffs) > options.replaceThreshold
+    ) {
         // Text is too different, mark it as replaced
         return [
             [DIFF_DELETE, from.content],
@@ -323,7 +398,7 @@ function createState(input: Token[]): DiffState {
         },
         hasNext() {
             return this.ptr < input.length;
-        }
+        },
     };
 }
 

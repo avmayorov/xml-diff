@@ -1,5 +1,8 @@
-import type { Diff } from 'diff-match-patch';
-import { ScannerOptions, createOptions as scannerOptions } from '@emmetio/html-matcher';
+import type { Diff } from "diff-match-patch";
+import {
+    ScannerOptions,
+    createOptions as scannerOptions,
+} from "@emmetio/html-matcher";
 
 export interface DMPOptions {
     /**
@@ -48,6 +51,11 @@ export interface DMPOptions {
      * @default 32
      */
     Match_MaxBits: number;
+}
+
+export enum PostDiffCleanup {
+    SEMANTIC_CLEANUP = "diff_cleanupSemantic",
+    EFFICIENCY_CLEANUP = "diff_cleanupEfficiency",
 }
 
 export interface Options extends ScannerOptions {
@@ -114,6 +122,14 @@ export interface Options extends ScannerOptions {
      * Custom function to perform diff on given content
      */
     diff?: (from: string, to: string, opt?: Partial<DMPOptions>) => Diff[];
+
+    /**
+     * Option for selection mode of post diff cleanup
+     * diff_cleanupSemantic - https://github.com/google/diff-match-patch/wiki/API#diff_cleanupsemanticdiffs--null
+     * diff_cleanupEfficiency - https://github.com/google/diff-match-patch/wiki/API#diff_cleanupsemanticdiffs--null
+     * @default "diff_cleanupSemantic"
+     */
+    postDiffCleanup?: PostDiffCleanup;
 }
 
 const defaultOptions: Partial<Options> = {
@@ -125,14 +141,49 @@ const defaultOptions: Partial<Options> = {
     // preserveTags: [],
     preserveXml: true,
     inlineElements: [
-        'a', 'abbr', 'acronym', 'applet', 'b', 'basefont', 'bdo',
-        'big', 'br', 'button', 'cite', 'code', 'del', 'dfn', 'em', 'font', 'i',
-        'iframe', 'img', 'input', 'ins', 'kbd', 'label', 'map', 'object', 'q',
-        's', 'samp', 'select', 'small', 'span', 'strike', 'strong', 'sub', 'sup',
-        'textarea', 'tt', 'u', 'var'
-    ]
+        "a",
+        "abbr",
+        "acronym",
+        "applet",
+        "b",
+        "basefont",
+        "bdo",
+        "big",
+        "br",
+        "button",
+        "cite",
+        "code",
+        "del",
+        "dfn",
+        "em",
+        "font",
+        "i",
+        "iframe",
+        "img",
+        "input",
+        "ins",
+        "kbd",
+        "label",
+        "map",
+        "object",
+        "q",
+        "s",
+        "samp",
+        "select",
+        "small",
+        "span",
+        "strike",
+        "strong",
+        "sub",
+        "sup",
+        "textarea",
+        "tt",
+        "u",
+        "var",
+    ],
+    postDiffCleanup: PostDiffCleanup.SEMANTIC_CLEANUP,
 };
 
 export default function createOptions(opt?: Partial<Options>): Options {
-    return scannerOptions({ ...defaultOptions,  ...opt }) as Options;
+    return scannerOptions({ ...defaultOptions, ...opt }) as Options;
 }

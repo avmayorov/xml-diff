@@ -1,6 +1,6 @@
 {
-  "name": "@emmetio/xml-diff",
-  "version": "2.2.0",
+  "name": "@avmayorov/xml-diff",
+  "version": "1.0.0",
   "description": "Performs diff between two XML documents",
   "main": "./dist/xml-diff.cjs.js",
   "module": "./dist/xml-diff.es.js",
@@ -14,7 +14,7 @@
     "prepare": "npm run lint && npm test && npm run clean && npm run build"
   },
   "keywords": [],
-  "author": "Sergey Chikuyonok <serge.che@gmail.com>",
+  "author": "Aleksandr Mayorov <sanek_majorov@mail.ru>",
   "license": "MIT",
   "devDependencies": {
     "@rollup/plugin-commonjs": "^22.0.2",
