@@ -1,18 +1,32 @@
-import diff from './diff';
-import parse, { createConsumer, Consumer } from './consumer';
-import createOptions, { Options, DMPOptions } from './options';
-import { ParsedModel } from './types';
+import diff from "./diff";
+import parse, { createConsumer, Consumer } from "./consumer";
+import createOptions, { Options, DMPOptions, PostDiffCleanup } from "./options";
+import { ParsedModel } from "./types";
 
-export { diff, parse, createOptions, createConsumer, Options, DMPOptions, ParsedModel, Consumer };
-export { slice, fragment } from './slice';
-export { diffToken, isDiffToken } from './utils';
-export { Token, TokenType, ElementTypeAddon } from './types';
+export {
+    diff,
+    parse,
+    createOptions,
+    createConsumer,
+    Options,
+    DMPOptions,
+    ParsedModel,
+    Consumer,
+    PostDiffCleanup,
+};
+export { slice, fragment } from "./slice";
+export { diffToken, isDiffToken } from "./utils";
+export { Token, TokenType, ElementTypeAddon } from "./types";
 
 /**
  * Calculates diff between two XML documents and returns `to` document content
  * with diff patches applied to it as `<ins>`/`<del>` tags
  */
-export default function diffDocuments(from: string, to: string, options?: Partial<Options>): string {
+export default function diffDocuments(
+    from: string,
+    to: string,
+    options?: Partial<Options>
+): string {
     const opt = createOptions(options);
     const fromDoc = parse(from, opt);
     const toDoc = parse(to, opt);
@@ -25,9 +39,14 @@ export default function diffDocuments(from: string, to: string, options?: Partia
  */
 export function stringify(model: ParsedModel): string {
     let offset = 0;
-    return model.tokens.map(token => {
-        const result = model.content.slice(offset, token.location) + token.value;
-        offset = token.location + (token.offset || 0);
-        return result;
-    }).join('') + model.content.slice(offset);
+    return (
+        model.tokens
+            .map((token) => {
+                const result =
+                    model.content.slice(offset, token.location) + token.value;
+                offset = token.location + (token.offset || 0);
+                return result;
+            })
+            .join("") + model.content.slice(offset)
+    );
 }
